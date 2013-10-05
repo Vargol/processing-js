@@ -10,7 +10,7 @@ int redgreenblue = 65793;
 int c = 4294967295;
 for (int i = 0; i < pi.width; i++) {
   for(int j = 0; j < pi.height; j++) {
-    pi.set(j, i, c);
+    pi.set(j, i, color(c));
     c -= red*2.5;
     c -= green*2.5;
   }

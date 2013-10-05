@@ -181,7 +181,7 @@ module.exports = function(options) {
     if (typeof type !== "string") {
       return false;
     }
-    return ["byte", "int", "char", "color", "float", "long", "double"].indexOf(type) !== -1;
+    return ["byte", "int", "char", "float", "long", "double"].indexOf(type) !== -1;
   }
 
   /**

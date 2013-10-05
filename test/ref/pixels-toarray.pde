@@ -2,11 +2,13 @@
 size(100,100);
 
 int[] p;
+int temp;
 
 loadPixels();
 p = pixels;
 for (int i = 0; i < p.length; ++i) {
-  p[i] ^= 0x408000;
+  temp = p[i].asInt ^ 0x408000; 	
+  p[i] = color(temp);
 }
 pixels = p;
 updatePixels();
@@ -14,8 +16,10 @@ updatePixels();
 PImage img = createImage(50,50, ARGB);
 img.loadPixels();
 p = img.pixels;
+
 for (int i = 0; i < p.length; ++i) {
-  p[i] ^= 0x80C00000;
+  temp = p[i].asInt ^ 0x80C00000; 	
+  p[i] = color(temp);
 }
 img.pixels = p;
 img.updatePixels();

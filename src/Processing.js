@@ -239,11 +239,11 @@
         drawing, // hold a Drawing2D or Drawing3D object
         doFill = true,
         fillStyle = [1.0, 1.0, 1.0, 1.0],
-        currentFillColor = 0xFFFFFFFF,
+        currentFillColor = {_r:255, _b:255, _g:255, _a:255, asInt:-1, asString:"rgba(255,255,255,1.0)"}, // 0xFFFFFFFF
         isFillDirty = true,
         doStroke = true,
         strokeStyle = [0.0, 0.0, 0.0, 1.0],
-        currentStrokeColor = 0xFF000000,
+        currentStrokeColor = {_r:0, _b:0, _g:0, _a:255, asInt:-16777216, asString:"rgba(0,0,0,1.0)"}, // 0xFF000000
         isStrokeDirty = true,
         lineWidth = 1,
         loopStarted = false,
@@ -266,7 +266,7 @@
         curTightness = 0,
         curveDet = 20,
         curveInited = false,
-        backgroundObj = -3355444, // rgb(204, 204, 204) is the default gray background colour
+        backgroundObj = {_r:204, _b:204, _g:204, _a:255, asInt:-3355444, asString:"rgba(204,204,204,1.0)"}, // rgb(204, 204, 204) is the default gray background colour
         bezDetail = 20,
         colorModeA = 255,
         colorModeX = 255,
@@ -2627,18 +2627,18 @@
         max = Math.max;
 
       function applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb) {
-        var a = min(((c1 & 0xff000000) >>> 24) + f, 0xff) << 24;
+        var a = min(((c1 & 0xff000000) >>> 24) + f, 0xff);
 
         var r = (ar + (((cr - ar) * f) >> 8));
-        r = ((r < 0) ? 0 : ((r > 255) ? 255 : r)) << 16;
+        r = ((r < 0) ? 0 : ((r > 255) ? 255 : r));
 
         var g = (ag + (((cg - ag) * f) >> 8));
-        g = ((g < 0) ? 0 : ((g > 255) ? 255 : g)) << 8;
+        g = ((g < 0) ? 0 : ((g > 255) ? 255 : g));
 
         var b = ab + (((cb - ab) * f) >> 8);
         b = (b < 0) ? 0 : ((b > 255) ? 255 : b);
 
-        return (a | r | g | b);
+        return color$4(r,g,b,a);
       }
 
       return {
@@ -2646,56 +2646,69 @@
           return c2;
         },
         blend: function(c1, c2) {
-          var f = (c2 & ALPHA_MASK) >>> 24,
-            ar = (c1 & RED_MASK),
-            ag = (c1 & GREEN_MASK),
-            ab = (c1 & BLUE_MASK),
-            br = (c2 & RED_MASK),
-            bg = (c2 & GREEN_MASK),
-            bb = (c2 & BLUE_MASK);
-
-          return (min(((c1 & ALPHA_MASK) >>> 24) + f, 0xff) << 24 |
-                  (ar + (((br - ar) * f) >> 8)) & RED_MASK |
-                  (ag + (((bg - ag) * f) >> 8)) & GREEN_MASK |
-                  (ab + (((bb - ab) * f) >> 8)) & BLUE_MASK);
+          var f = c2._a,
+            ar = c1._r,
+            ag = c1._g,
+            ab = c1._b,
+            br = c2._r,
+            bg = c2._g,
+            bb = c2._b;
+            
+          return color$4(ar + ((br - ar) * f >> 8),
+                         ag + ((bg - ag) * f >> 8),
+                         ab + ((bb - ab) * f >> 8),
+                         min(c1._a  + f, 0xff));
         },
-        add: function(c1, c2) {
-          var f = (c2 & ALPHA_MASK) >>> 24;
-          return (min(((c1 & ALPHA_MASK) >>> 24) + f, 0xff) << 24 |
+        add: function(co1, co2) {
+          var f = co2._a,
+          c1 = co1.asInt,
+          c2 = co2.asInt;
+          
+          return color$1(min(co1._a + f, 0xff) << 24 |
                   min(((c1 & RED_MASK) + ((c2 & RED_MASK) >> 8) * f), RED_MASK) & RED_MASK |
                   min(((c1 & GREEN_MASK) + ((c2 & GREEN_MASK) >> 8) * f), GREEN_MASK) & GREEN_MASK |
                   min((c1 & BLUE_MASK) + (((c2 & BLUE_MASK) * f) >> 8), BLUE_MASK));
         },
-        subtract: function(c1, c2) {
-          var f = (c2 & ALPHA_MASK) >>> 24;
-          return (min(((c1 & ALPHA_MASK) >>> 24) + f, 0xff) << 24 |
-                  max(((c1 & RED_MASK) - ((c2 & RED_MASK) >> 8) * f), GREEN_MASK) & RED_MASK |
-                  max(((c1 & GREEN_MASK) - ((c2 & GREEN_MASK) >> 8) * f), BLUE_MASK) & GREEN_MASK |
-                  max((c1 & BLUE_MASK) - (((c2 & BLUE_MASK) * f) >> 8), 0));
+        subtract: function(co1, co2) {
+          var f = co2._a,
+          c1 = co1.asInt,
+          c2 = co2.asInt;
+          
+          return color$1(min(co1._a + f, 0xff) << 24 | 
+                         max(((c1 & RED_MASK) - ((c2 & RED_MASK) >> 8) * f), GREEN_MASK) & RED_MASK | 
+                         max(((c1 & GREEN_MASK) - ((c2 & GREEN_MASK) >> 8) * f), BLUE_MASK) & GREEN_MASK | 
+                         max((c1 & BLUE_MASK) - (((c2 & BLUE_MASK) * f) >> 8), 0));
         },
-        lightest: function(c1, c2) {
-          var f = (c2 & ALPHA_MASK) >>> 24;
-          return (min(((c1 & ALPHA_MASK) >>> 24) + f, 0xff) << 24 |
-                  max(c1 & RED_MASK, ((c2 & RED_MASK) >> 8) * f) & RED_MASK |
-                  max(c1 & GREEN_MASK, ((c2 & GREEN_MASK) >> 8) * f) & GREEN_MASK |
-                  max(c1 & BLUE_MASK, ((c2 & BLUE_MASK) * f) >> 8));
+        lightest: function(co1, co2) {
+          var f = co2._a,
+          c1 = co1.asInt,
+          c2 = co2.asInt;
+          
+          return color$1(min(co1._a + f, 0xff) << 24 | 
+                         max(c1 & RED_MASK, ((c2 & RED_MASK) >> 8) * f) & RED_MASK | 
+                         max(c1 & GREEN_MASK, ((c2 & GREEN_MASK) >> 8) * f) & GREEN_MASK | 
+                         max(c1 & BLUE_MASK, (c2 & BLUE_MASK) * f >> 8));
         },
-        darkest: function(c1, c2) {
-          var f = (c2 & ALPHA_MASK) >>> 24,
+        darkest: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt, 
             ar = (c1 & RED_MASK),
             ag = (c1 & GREEN_MASK),
             ab = (c1 & BLUE_MASK),
             br = min(c1 & RED_MASK, ((c2 & RED_MASK) >> 8) * f),
             bg = min(c1 & GREEN_MASK, ((c2 & GREEN_MASK) >> 8) * f),
             bb = min(c1 & BLUE_MASK, ((c2 & BLUE_MASK) * f) >> 8);
-
-          return (min(((c1 & ALPHA_MASK) >>> 24) + f, 0xff) << 24 |
-                  (ar + (((br - ar) * f) >> 8)) & RED_MASK |
-                  (ag + (((bg - ag) * f) >> 8)) & GREEN_MASK |
-                  (ab + (((bb - ab) * f) >> 8)) & BLUE_MASK);
+          
+          return color$1(min(co1._a + f, 0xff) << 24 | 
+                         (ar + (((br - ar) * f) >> 8)) & RED_MASK | 
+                         (ag + (((bg - ag) * f) >> 8)) & GREEN_MASK | 
+                         (ab + (((bb - ab) * f) >> 8)) & BLUE_MASK );
         },
-        difference: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        difference: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2705,11 +2718,13 @@
             cr = (ar > br) ? (ar - br) : (br - ar),
             cg = (ag > bg) ? (ag - bg) : (bg - ag),
             cb = (ab > bb) ? (ab - bb) : (bb - ab);
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        exclusion: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        exclusion: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2719,11 +2734,13 @@
             cr = ar + br - ((ar * br) >> 7),
             cg = ag + bg - ((ag * bg) >> 7),
             cb = ab + bb - ((ab * bb) >> 7);
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        multiply: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        multiply: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2733,11 +2750,13 @@
             cr = (ar * br) >> 8,
             cg = (ag * bg) >> 8,
             cb = (ab * bb) >> 8;
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        screen: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        screen: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2747,11 +2766,13 @@
             cr = 255 - (((255 - ar) * (255 - br)) >> 8),
             cg = 255 - (((255 - ag) * (255 - bg)) >> 8),
             cb = 255 - (((255 - ab) * (255 - bb)) >> 8);
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        hard_light: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        hard_light: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2761,11 +2782,13 @@
             cr = (br < 128) ? ((ar * br) >> 7) : (255 - (((255 - ar) * (255 - br)) >> 7)),
             cg = (bg < 128) ? ((ag * bg) >> 7) : (255 - (((255 - ag) * (255 - bg)) >> 7)),
             cb = (bb < 128) ? ((ab * bb) >> 7) : (255 - (((255 - ab) * (255 - bb)) >> 7));
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        soft_light: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        soft_light: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2775,11 +2798,13 @@
             cr = ((ar * br) >> 7) + ((ar * ar) >> 8) - ((ar * ar * br) >> 15),
             cg = ((ag * bg) >> 7) + ((ag * ag) >> 8) - ((ag * ag * bg) >> 15),
             cb = ((ab * bb) >> 7) + ((ab * ab) >> 8) - ((ab * ab * bb) >> 15);
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        overlay: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        overlay: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
@@ -2789,65 +2814,69 @@
             cr = (ar < 128) ? ((ar * br) >> 7) : (255 - (((255 - ar) * (255 - br)) >> 7)),
             cg = (ag < 128) ? ((ag * bg) >> 7) : (255 - (((255 - ag) * (255 - bg)) >> 7)),
             cb = (ab < 128) ? ((ab * bb) >> 7) : (255 - (((255 - ab) * (255 - bb)) >> 7));
-
-          return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
+            
+            return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        dodge: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        dodge: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
             br = (c2 & RED_MASK) >> 16,
             bg = (c2 & GREEN_MASK) >> 8,
             bb = (c2 & BLUE_MASK);
-
+            
           var cr = 255;
           if (br !== 255) {
             cr = (ar << 8) / (255 - br);
             cr = (cr < 0) ? 0 : ((cr > 255) ? 255 : cr);
           }
-
+          
           var cg = 255;
           if (bg !== 255) {
             cg = (ag << 8) / (255 - bg);
             cg = (cg < 0) ? 0 : ((cg > 255) ? 255 : cg);
           }
-
+          
           var cb = 255;
           if (bb !== 255) {
             cb = (ab << 8) / (255 - bb);
             cb = (cb < 0) ? 0 : ((cb > 255) ? 255 : cb);
           }
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         },
-        burn: function(c1, c2) {
-          var f  = (c2 & ALPHA_MASK) >>> 24,
+        burn: function(co1, co2) {
+          var f = co2._a,
+            c1 = co1.asInt,
+            c2 = co2.asInt,
             ar = (c1 & RED_MASK) >> 16,
             ag = (c1 & GREEN_MASK) >> 8,
             ab = (c1 & BLUE_MASK),
             br = (c2 & RED_MASK) >> 16,
             bg = (c2 & GREEN_MASK) >> 8,
             bb = (c2 & BLUE_MASK);
-
+          
           var cr = 0;
           if (br !== 0) {
             cr = ((255 - ar) << 8) / br;
             cr = 255 - ((cr < 0) ? 0 : ((cr > 255) ? 255 : cr));
           }
-
+          
           var cg = 0;
           if (bg !== 0) {
             cg = ((255 - ag) << 8) / bg;
             cg = 255 - ((cg < 0) ? 0 : ((cg > 255) ? 255 : cg));
           }
-
+          
           var cb = 0;
           if (bb !== 0) {
             cb = ((255 - ab) << 8) / bb;
             cb = 255 - ((cb < 0) ? 0 : ((cb > 255) ? 255 : cb));
           }
-
+          
           return applyMode(c1, f, ar, ag, ab, br, bg, bb, cr, cg, cb);
         }
       };
@@ -2855,7 +2884,7 @@
 
     function color$4(aValue1, aValue2, aValue3, aValue4) {
       var r, g, b, a;
-
+      
       if (curColorMode === PConstants.HSB) {
         var rgb = p.color.toRGB(aValue1, aValue2, aValue3);
         r = rgb[0];
@@ -2866,9 +2895,9 @@
         g = Math.round(255 * (aValue2 / colorModeY));
         b = Math.round(255 * (aValue3 / colorModeZ));
       }
-
+      
       a = Math.round(255 * (aValue4 / colorModeA));
-
+      
       // Limit values less than 0 and greater than 255
       r = (r < 0) ? 0 : r;
       g = (g < 0) ? 0 : g;
@@ -2878,29 +2907,44 @@
       g = (g > 255) ? 255 : g;
       b = (b > 255) ? 255 : b;
       a = (a > 255) ? 255 : a;
-
-      // Create color int
-      return (a << 24) & PConstants.ALPHA_MASK | (r << 16) & PConstants.RED_MASK | (g << 8) & PConstants.GREEN_MASK | b & PConstants.BLUE_MASK;
+      
+      var intc = p.color.toInt(r, g, b, a);
+      
+      return { _r:r,
+               _g:g,
+               _b:b,
+               _a:a,
+               asInt:intc,
+               asString:p.color.toString(intc) };
     }
-
+    
     function color$2(aValue1, aValue2) {
       var a;
-
+      
       // Color int and alpha
       if (aValue1 & PConstants.ALPHA_MASK) {
         a = Math.round(255 * (aValue2 / colorModeA));
         // Limit values less than 0 and greater than 255
         a = (a > 255) ? 255 : a;
         a = (a < 0) ? 0 : a;
-
-        return aValue1 - (aValue1 & PConstants.ALPHA_MASK) + ((a << 24) & PConstants.ALPHA_MASK);
+        
+        var aColor =  aValue1 - (aValue1 & PConstants.ALPHA_MASK) + (a << 24 & PConstants.ALPHA_MASK);
+        
+        return {
+            _r: ((aColor >> 16) & 255) / 255 * colorModeX,
+            _g: ((aColor & PConstants.GREEN_MASK) >>> 8) / 255 * colorModeY,
+            _b: (aColor & PConstants.RED_MASK) / 255 * colorModeZ,
+            _a: ((aColor >> 24) & 255) / 255 * colorModeA,
+            asInt:aColor,
+            asString:p.color.toString(aColor)
+        };
       }
       // Grayscale and alpha
       if (curColorMode === PConstants.RGB) {
-        return color$4(aValue1, aValue1, aValue1, aValue2);
+           return color$4(aValue1, aValue1, aValue1, aValue2);
       }
       if (curColorMode === PConstants.HSB) {
-        return color$4(0, 0, (aValue1 / colorModeX) * colorModeZ, aValue2);
+           return color$4(0, 0, (aValue1 / colorModeX) * colorModeZ, aValue2);
       }
     }
 
@@ -2920,10 +2964,17 @@
           // Java Overflow
           aValue1 -= 4294967296;
         }
-        return aValue1;
+        return {
+            _r: ((aValue1 >> 16) & 255) / 255 * colorModeX,
+            _g: ((aValue1 & PConstants.GREEN_MASK) >>> 8) / 255 * colorModeY,
+            _b: (aValue1 & PConstants.BLUE_MASK) / 255 * colorModeZ,
+            _a: ((aValue1 >> 24) & 255) / 255 * colorModeA,
+            asString: p.color.toString(aValue1),
+            asInt: aValue1
+        };
       }
     }
-
+    
     /**
     * Creates colors for storing in variables of the color datatype. The parameters are
     * interpreted as RGB or HSB values depending on the current colorMode(). The default
@@ -2940,7 +2991,7 @@
     * @returns {color} the color
     *
     * @see colorMode
-    */
+    */    
     p.color = function(aValue1, aValue2, aValue3, aValue4) {
 
       // 4 arguments: (R, G, B, A) or (H, S, B, A)
@@ -2955,6 +3006,9 @@
 
       // 2 arguments: (Color, A) or (Grayscale, A)
       if (aValue1 !== undef && aValue2 !== undef) {
+        if (typeof aValue1 === "object") {
+          return color$2(aValue1.asInt, aValue2);
+        }
         return color$2(aValue1, aValue2);
       }
 
@@ -2963,6 +3017,9 @@
         return color$1(aValue1);
       }
 
+      if (typeof aValue1 === "object") {
+        return color$1(aValue1.asInt);
+      }
       // Default
       return color$4(colorModeX, colorModeY, colorModeZ, colorModeA);
     };
@@ -2979,13 +3036,15 @@
     };
 
     // Creates a simple array in [R, G, B, A] format, [255, 255, 255, 255]
-    p.color.toArray = function(colorInt) {
+    p.color.toArray = function(colorObj) {
+      var colorInt = colorObj.asInt; 
       return [(colorInt & PConstants.RED_MASK) >>> 16, (colorInt & PConstants.GREEN_MASK) >>> 8,
               colorInt & PConstants.BLUE_MASK, (colorInt & PConstants.ALPHA_MASK) >>> 24];
     };
 
     // Creates a WebGL color array in [R, G, B, A] format. WebGL wants the color ranges between 0 and 1, [1, 1, 1, 1]
-    p.color.toGLArray = function(colorInt) {
+    p.color.toGLArray = function(colorObj) {
+      var colorInt = colorObj.asInt;
       return [((colorInt & PConstants.RED_MASK) >>> 16) / 255, ((colorInt & PConstants.GREEN_MASK) >>> 8) / 255,
               (colorInt & PConstants.BLUE_MASK) / 255, ((colorInt & PConstants.ALPHA_MASK) >>> 24) / 255];
     };
@@ -3030,9 +3089,9 @@
     function colorToHSB(colorInt) {
       var red, green, blue;
 
-      red   = ((colorInt & PConstants.RED_MASK) >>> 16) / 255;
-      green = ((colorInt & PConstants.GREEN_MASK) >>> 8) / 255;
-      blue  = (colorInt & PConstants.BLUE_MASK) / 255;
+      red   = (colorInt._r & 255) / 255;
+      green = (colorInt._g & 255) / 255;
+      blue  = (colorInt._b & 255) / 255;
 
       var max = p.max(p.max(red,green), blue),
           min = p.min(p.min(red,green), blue),
@@ -3129,7 +3188,7 @@
     * @see brightness
     */
     p.red = function(aColor) {
-      return ((aColor & PConstants.RED_MASK) >>> 16) / 255 * colorModeX;
+      return aColor._r / 255 * colorModeX;
     };
 
     /**
@@ -3149,7 +3208,7 @@
     * @see brightness
     */
     p.green = function(aColor) {
-      return ((aColor & PConstants.GREEN_MASK) >>> 8) / 255 * colorModeY;
+      return aColor._g / 255 * colorModeY;
     };
 
     /**
@@ -3169,7 +3228,7 @@
     * @see brightness
     */
     p.blue = function(aColor) {
-      return (aColor & PConstants.BLUE_MASK) / 255 * colorModeZ;
+      return aColor._b / 255 * colorModeZ;
     };
 
     /**
@@ -3189,7 +3248,7 @@
     * @see brightness
     */
     p.alpha = function(aColor) {
-      return ((aColor & PConstants.ALPHA_MASK) >>> 24) / 255 * colorModeA;
+      return aColor._a / 255 * colorModeA;
     };
 
     /**
@@ -3209,16 +3268,15 @@
     p.lerpColor = function(c1, c2, amt) {
       var r, g, b, a, r1, g1, b1, a1, r2, g2, b2, a2;
       var hsb1, hsb2, rgb, h, s;
-      var colorBits1 = p.color(c1);
-      var colorBits2 = p.color(c2);
+      var intc;
 
       if (curColorMode === PConstants.HSB) {
         // Special processing for HSB mode.
         // Get HSB and Alpha values for Color 1 and 2
-        hsb1 = colorToHSB(colorBits1);
-        a1 = ((colorBits1 & PConstants.ALPHA_MASK) >>> 24) / colorModeA;
-        hsb2 = colorToHSB(colorBits2);
-        a2 = ((colorBits2 & PConstants.ALPHA_MASK) >>> 24) / colorModeA;
+        hsb1 = colorToHSB(c1);
+        a1 = c1._a / colorModeA;
+        hsb2 = colorToHSB(c2);
+        a2 = c2._a / colorModeA;
 
         // Return lerp value for each channel, for HSB components
         h = p.lerp(hsb1[0], hsb2[0], amt);
@@ -3228,34 +3286,31 @@
         // ... and for Alpha-range
         a = p.lerp(a1, a2, amt) * colorModeA;
 
-        return (a << 24) & PConstants.ALPHA_MASK |
-               (rgb[0] << 16) & PConstants.RED_MASK |
-               (rgb[1] << 8) & PConstants.GREEN_MASK |
-               rgb[2] & PConstants.BLUE_MASK;
+        intc = p.color.toInt(rgb[0], rgb[1], rgb[2], a);
+      
+        return { _r:rgb[0],
+                 _g:rgb[1],
+                 _b:rgb[2],
+                 _a:a,
+                 asInt:intc,
+                 asString:p.color.toString(intc) };
       }
 
-      // Get RGBA values for Color 1 to floats
-      r1 = (colorBits1 & PConstants.RED_MASK) >>> 16;
-      g1 = (colorBits1 & PConstants.GREEN_MASK) >>> 8;
-      b1 = (colorBits1 & PConstants.BLUE_MASK);
-      a1 = ((colorBits1 & PConstants.ALPHA_MASK) >>> 24) / colorModeA;
-
-      // Get RGBA values for Color 2 to floats
-      r2 = (colorBits2 & PConstants.RED_MASK) >>> 16;
-      g2 = (colorBits2 & PConstants.GREEN_MASK) >>> 8;
-      b2 = (colorBits2 & PConstants.BLUE_MASK);
-      a2 = ((colorBits2 & PConstants.ALPHA_MASK) >>> 24) / colorModeA;
 
       // Return lerp value for each channel, INT for color, Float for Alpha-range
-      r = p.lerp(r1, r2, amt) | 0;
-      g = p.lerp(g1, g2, amt) | 0;
-      b = p.lerp(b1, b2, amt) | 0;
-      a = p.lerp(a1, a2, amt) * colorModeA;
+      r = p.lerp(c1._r, c2._r, amt) | 0;
+      g = p.lerp(c1._g, c2._g, amt) | 0;
+      b = p.lerp(c1._b, c2._b, amt) | 0;
+      a = p.lerp(c1._a / colorModeA, c2._a / colorModeA, amt) * colorModeA;
 
-      return (a << 24) & PConstants.ALPHA_MASK |
-             (r << 16) & PConstants.RED_MASK |
-             (g << 8) & PConstants.GREEN_MASK |
-             b & PConstants.BLUE_MASK;
+      intc = p.color.toInt(r, g, b, a);
+      
+      return { _r:r,
+               _g:g,
+               _b:b,
+               _a:a,
+               asInt:intc,
+               asString:p.color.toString(intc) };
     };
 
     /**
@@ -5046,9 +5101,9 @@
       // Instead of calling p.color, we do the calculations ourselves to
       // reduce property lookups.
       var col = color$4(r, g, b, 0);
-      var normalizedCol = [ ((col & PConstants.RED_MASK) >>> 16) / 255,
-                            ((col & PConstants.GREEN_MASK) >>> 8) / 255,
-                             (col & PConstants.BLUE_MASK) / 255 ];
+      var normalizedCol = [ col._r / 255,
+                            col._g / 255,
+                            col._b / 255 ];
 
       curContext.useProgram(programObject3D);
       uniformf("uLights.color.3d." + lightCount, programObject3D, "uLights" + lightCount + ".color", normalizedCol);
@@ -5111,9 +5166,9 @@
       // Instead of calling p.color, we do the calculations ourselves to
       // reduce property lookups.
       var col = color$4(r, g, b, 0);
-      var normalizedCol = [ ((col & PConstants.RED_MASK) >>> 16) / 255,
-                            ((col & PConstants.GREEN_MASK) >>> 8) / 255,
-                             (col & PConstants.BLUE_MASK) / 255 ];
+      var normalizedCol = [ col._r / 255,
+                            col._g / 255,
+                            col._b / 255 ];
 
       uniformf("uLights.color.3d." + lightCount, programObject3D, "uLights" + lightCount + ".color", normalizedCol);
       uniformf("uLights.position.3d." + lightCount, programObject3D, "uLights" + lightCount + ".position", dir);
@@ -5181,9 +5236,9 @@
       // Instead of calling p.color, we do the calculations ourselves to
       // reduce property lookups.
       var col = color$4(r, g, b, 0);
-      var normalizedCol = [ ((col & PConstants.RED_MASK) >>> 16) / 255,
-                            ((col & PConstants.GREEN_MASK) >>> 8) / 255,
-                             (col & PConstants.BLUE_MASK) / 255 ];
+      var normalizedCol = [ col._r / 255,
+                            col._g / 255,
+                            col._b / 255 ];
 
       curContext.useProgram(programObject3D);
       uniformf("uSpecular3d", programObject3D, "uSpecular", normalizedCol);
@@ -5254,9 +5309,9 @@
       // Instead of calling p.color, we do the calculations ourselves to
       // reduce property lookups.
       var col = color$4(r, g, b, 0);
-      var normalizedCol = [ ((col & PConstants.RED_MASK) >>> 16) / 255,
-                            ((col & PConstants.GREEN_MASK) >>> 8) / 255,
-                             (col & PConstants.BLUE_MASK) / 255 ];
+      var normalizedCol = [ col._r / 255,
+                            col._g / 255,
+                            col._b / 255 ];
 
       curContext.useProgram(programObject3D);
       uniformf("uLights.color.3d." + lightCount, programObject3D, "uLights" + lightCount + ".color", normalizedCol);
@@ -5344,9 +5399,9 @@
       // Instead of calling p.color, we do the calculations ourselves to
       // reduce property lookups.
       var col = color$4(r, g, b, 0);
-      var normalizedCol = [ ((col & PConstants.RED_MASK) >>> 16) / 255,
-                            ((col & PConstants.GREEN_MASK) >>> 8) / 255,
-                             (col & PConstants.BLUE_MASK) / 255 ];
+      var normalizedCol = [ col._r / 255,
+                            col._g / 255,
+                            col._b / 255 ];
 
       uniformf("uLights.color.3d." + lightCount, programObject3D, "uLights" + lightCount + ".color", normalizedCol);
       uniformf("uLights.position.3d." + lightCount, programObject3D, "uLights" + lightCount + ".position", pos.array());
@@ -6332,7 +6387,7 @@
     function executeContextFill() {
       if(doFill) {
         if(isFillDirty) {
-          curContext.fillStyle = p.color.toString(currentFillColor);
+          curContext.fillStyle = currentFillColor.asString;
           isFillDirty = false;
         }
         curContext.fill();
@@ -6381,8 +6436,16 @@
      * @see #colorMode()
      */
     DrawingShared.prototype.stroke = function() {
-      var color = p.color(arguments[0], arguments[1], arguments[2], arguments[3]);
-      if(color === currentStrokeColor && doStroke) {
+      var color;
+      
+      // check is args color object or rgba values
+      if (typeof arguments[0] == "object") {
+        color = arguments[0];
+      } else {     
+        color = p.color(arguments[0], arguments[1], arguments[2], arguments[3]);
+      }      
+             
+      if(color.asInt == currentStrokeColor.asInt && doStroke) {
         return;
       }
       doStroke = true;
@@ -6402,7 +6465,7 @@
     function executeContextStroke() {
       if(doStroke) {
         if(isStrokeDirty) {
-          curContext.strokeStyle = p.color.toString(currentStrokeColor);
+          curContext.strokeStyle = currentStrokeColor.asString;
           isStrokeDirty = false;
         }
         curContext.stroke();
@@ -6543,7 +6606,7 @@
 
       x = Math.round(x);
       y = Math.round(y);
-      curContext.fillStyle = p.color.toString(currentStrokeColor);
+      curContext.fillStyle = currentStrokeColor.asString;
       isFillDirty = true;
       // Draw a circle for any point larger than 1px
       if (lineWidth > 1) {
@@ -8821,6 +8884,82 @@
               throw "Image is loaded remotely. Cannot get pixels.";
             }
 
+            return color$4(data[offset],
+                           data[offset+1],
+                           data[offset+2],
+                           data[offset+3]);
+          };
+        }(pImage)),
+
+        setPixel: (function(aImg) {
+          return function(i, c) {
+            var offset = i*4,
+              data = aImg.imageData.data;
+
+            if (aImg.isRemote) {
+              throw "Image is loaded remotely. Cannot set pixel.";
+            }
+
+            data[offset+0] = c._r; // RED_MASK
+            data[offset+1] = c._g; // GREEN_MASK
+            data[offset+2] = c._b; // BLUE_MASK
+            data[offset+3] = c._a; // ALPHA_MASK
+            aImg.__isDirty = true;
+          };
+        }(pImage)),
+
+        toArray: (function(aImg) {
+          return function() {
+            var arr = [],
+              data = aImg.imageData.data,
+              length = aImg.width * aImg.height;
+
+            if (aImg.isRemote) {
+              throw "Image is loaded remotely. Cannot get pixels.";
+            }
+
+            for (var i = 0, offset = 0; i < length; i++, offset += 4) {
+              arr.push( color$4(data[offset],
+                           data[offset+1],
+                           data[offset+2],
+                           data[offset+3]) );
+            }
+            return arr;
+          };
+        }(pImage)),
+
+        set: (function(aImg) {
+          return function(arr) {
+            var offset,
+              data,
+              c;
+            if (this.isRemote) {
+              throw "Image is loaded remotely. Cannot set pixels.";
+            }
+
+            data = aImg.imageData.data;
+            for (var i = 0, aL = arr.length; i < aL; i++) {
+              c = arr[i];
+              offset = i*4;
+
+              data[offset+0] = c._r; // RED_MASK
+              data[offset+1] = c._g; // GREEN_MASK
+              data[offset+2] = c._b; // BLUE_MASK
+              data[offset+3] = c._a; // ALPHA_MASK
+            }
+            aImg.__isDirty = true;
+          };
+        }(pImage)),
+        
+        _getPixel: (function(aImg) {
+          return function(i) {
+            var offset = i*4,
+              data = aImg.imageData.data;
+
+            if (aImg.isRemote) {
+              throw "Image is loaded remotely. Cannot get pixels.";
+            }
+
             return (data[offset+3] << 24) & PConstants.ALPHA_MASK |
                    (data[offset] << 16) & PConstants.RED_MASK |
                    (data[offset+1] << 8) & PConstants.GREEN_MASK |
@@ -8828,7 +8967,7 @@
           };
         }(pImage)),
 
-        setPixel: (function(aImg) {
+        _setPixel: (function(aImg) {
           return function(i, c) {
             var offset = i*4,
               data = aImg.imageData.data;
@@ -8845,7 +8984,7 @@
           };
         }(pImage)),
 
-        toArray: (function(aImg) {
+        _toArray: (function(aImg) {
           return function() {
             var arr = [],
               data = aImg.imageData.data,
@@ -8865,7 +9004,7 @@
           };
         }(pImage)),
 
-        set: (function(aImg) {
+        _set: (function(aImg) {
           return function(arr) {
             var offset,
               data,
@@ -8887,6 +9026,7 @@
             aImg.__isDirty = true;
           };
         }(pImage))
+
 
       };
     }
@@ -9384,6 +9524,8 @@
 
     function get$2(x,y) {
       var data;
+      var intc;
+      
       // return the color at x,y (int) of curContext
       if (x >= p.width || x < 0 || y < 0 || y >= p.height) {
         // x,y is outside image return transparent black
@@ -9394,18 +9536,27 @@
       if (isContextReplaced) {
         var offset = ((0|x) + p.width * (0|y)) * 4;
         data = p.imageData.data;
-        return (data[offset + 3] << 24) & PConstants.ALPHA_MASK |
-               (data[offset] << 16) & PConstants.RED_MASK |
-               (data[offset + 1] << 8) & PConstants.GREEN_MASK |
-               data[offset + 2] & PConstants.BLUE_MASK;
+        intc = p.color.toInt(data[offset], data[offset + 1], data[offset + 2], data[offset + 3]);
+      
+        return { _r:data[offset],
+                 _g:data[offset + 1],
+                 _b:data[offset + 2],
+                 _a:data[offset + 3],
+                 asInt:intc,
+                 asString:p.color.toString(intc)}; 
       }
 
       // x,y is inside canvas space
       data = p.toImageData(0|x, 0|y, 1, 1).data;
-      return (data[3] << 24) & PConstants.ALPHA_MASK |
-             (data[0] << 16) & PConstants.RED_MASK |
-             (data[1] << 8) & PConstants.GREEN_MASK |
-             data[2] & PConstants.BLUE_MASK;
+      
+      intc = p.color.toInt(data[0], data[1], data[2], data[3]);
+      
+      return { _r:data[0],
+               _g:data[1],
+               _b:data[2],
+               _a:data[3],
+               asInt:intc,
+               asString:p.color.toString(intc)}; 
     }
     function get$3(x,y,img) {
       if (img.isRemote) { // Remote images cannot access imageData
@@ -9413,11 +9564,15 @@
       }
       // PImage.get(x,y) was called, return the color (int) at x,y of img
       var offset = y * img.width * 4 + (x * 4),
-          data = img.imageData.data;
-      return (data[offset + 3] << 24) & PConstants.ALPHA_MASK |
-             (data[offset] << 16) & PConstants.RED_MASK |
-             (data[offset + 1] << 8) & PConstants.GREEN_MASK |
-             data[offset + 2] & PConstants.BLUE_MASK;
+      data = img.imageData.data;
+      var intc = p.color.toInt(data[offset], data[offset + 1], data[offset + 2], data[offset + 3]);
+      
+      return { _r:data[offset],
+               _g:data[offset + 1],
+               _b:data[offset + 2],
+               _a:data[offset + 3],
+               asInt:intc,
+               asString:p.color.toString(intc)};
     }
     function get$4(x, y, w, h) {
       // return a PImage of w and h from cood x,y of curContext
@@ -9613,7 +9768,7 @@
       var color, oldFill;
       if (arguments.length === 3) {
         // called p.set(), was it with a color or a img ?
-        if (typeof obj === "number") {
+        if (!(obj instanceof PImage)) {
           set$3(x, y, obj);
         } else if (obj instanceof PImage || obj.__isPImage) {
           p.image(obj, x, y);
@@ -9649,19 +9804,49 @@
       getLength: function() { return p.imageData.data.length ? p.imageData.data.length/4 : 0; },
       getPixel: function(i) {
         var offset = i*4, data = p.imageData.data;
+        return color$4(data[offset],
+                       data[offset+1],
+                       data[offset+2],
+                       data[offset+3]);
+      },
+      setPixel: function(i,c) {
+        var offset = i*4, data = p.imageData.data;
+        data[offset+0] = c._r; // RED_MASK
+        data[offset+1] = c._g; // GREEN_MASK
+        data[offset+2] = c._b; // BLUE_MASK
+        data[offset+3] = c._a; // ALPHA_MASK
+      },
+      toArray: function() {
+        var arr = [], length = p.imageData.width * p.imageData.height, data = p.imageData.data;
+        for (var i = 0, offset = 0; i < length; i++, offset += 4) {
+          arr.push(color$4(data[offset],
+                       data[offset+1],
+                       data[offset+2],
+                       data[offset+3]));
+        }
+        return arr;
+      },
+      set: function(arr) {
+        for (var i = 0, aL = arr.length; i < aL; i++) {
+          this.setPixel(i, arr[i]);
+        }
+      },
+      
+      _getPixel: function(i) {
+        var offset = i*4, data = p.imageData.data;
         return (data[offset+3] << 24) & 0xff000000 |
                (data[offset+0] << 16) & 0x00ff0000 |
                (data[offset+1] << 8) & 0x0000ff00 |
                data[offset+2] & 0x000000ff;
       },
-      setPixel: function(i,c) {
+      _setPixel: function(i,c) {
         var offset = i*4, data = p.imageData.data;
         data[offset+0] = (c & 0x00ff0000) >>> 16; // RED_MASK
         data[offset+1] = (c & 0x0000ff00) >>> 8;  // GREEN_MASK
         data[offset+2] = (c & 0x000000ff);        // BLUE_MASK
         data[offset+3] = (c & 0xff000000) >>> 24; // ALPHA_MASK
       },
-      toArray: function() {
+      _toArray: function() {
         var arr = [], length = p.imageData.width * p.imageData.height, data = p.imageData.data;
         for (var i = 0, offset = 0; i < length; i++, offset += 4) {
           arr.push((data[offset+3] << 24) & 0xff000000 |
@@ -9671,11 +9856,13 @@
         }
         return arr;
       },
-      set: function(arr) {
+      _set: function(arr) {
         for (var i = 0, aL = arr.length; i < aL; i++) {
-          this.setPixel(i, arr[i]);
+          this._setPixel(i, arr[i]);
         }
-      }
+      }      
+      
+      
     };
 
     // Gets a 1-Dimensional pixel array from Canvas
@@ -9838,7 +10025,7 @@
         if (p.alpha(backgroundObj) !== colorModeA) {
           curContext.clearRect(0,0, p.width, p.height);
         }
-        curContext.fillStyle = p.color.toString(backgroundObj);
+        curContext.fillStyle = backgroundObj.asString;
         curContext.fillRect(0, 0, p.width, p.height);
         isFillDirty = true;
         restoreContext();
@@ -10253,7 +10440,7 @@
           currRowIdx = currIdx;
           maxRowIdx = currIdx + aImg.width;
           while (currIdx < maxRowIdx) {
-            colOrig = colOut = aImg.pixels.getPixel(currIdx);
+            colOrig = colOut = aImg.pixels._getPixel(currIdx);
             idxLeft = currIdx - 1;
             idxRight = currIdx + 1;
             idxUp = currIdx - aImg.width;
@@ -10270,10 +10457,10 @@
             if (idxDown >= maxIdx) {
               idxDown = currIdx;
             }
-            colUp = aImg.pixels.getPixel(idxUp);
-            colLeft = aImg.pixels.getPixel(idxLeft);
-            colDown = aImg.pixels.getPixel(idxDown);
-            colRight = aImg.pixels.getPixel(idxRight);
+            colUp = aImg.pixels._getPixel(idxUp);
+            colLeft = aImg.pixels._getPixel(idxLeft);
+            colDown = aImg.pixels._getPixel(idxDown);
+            colRight = aImg.pixels._getPixel(idxRight);
 
             // compute luminance
             currLum = 77*(colOrig>>16&0xff) + 151*(colOrig>>8&0xff) + 28*(colOrig&0xff);
@@ -10307,7 +10494,7 @@
           currRowIdx = currIdx;
           maxRowIdx = currIdx + aImg.width;
           while (currIdx < maxRowIdx) {
-            colOrig = colOut = aImg.pixels.getPixel(currIdx);
+            colOrig = colOut = aImg.pixels._getPixel(currIdx);
             idxLeft = currIdx - 1;
             idxRight = currIdx + 1;
             idxUp = currIdx - aImg.width;
@@ -10324,10 +10511,10 @@
             if (idxDown >= maxIdx) {
               idxDown = currIdx;
             }
-            colUp = aImg.pixels.getPixel(idxUp);
-            colLeft = aImg.pixels.getPixel(idxLeft);
-            colDown = aImg.pixels.getPixel(idxDown);
-            colRight = aImg.pixels.getPixel(idxRight);
+            colUp = aImg.pixels._getPixel(idxUp);
+            colLeft = aImg.pixels._getPixel(idxLeft);
+            colDown = aImg.pixels._getPixel(idxDown);
+            colRight = aImg.pixels._getPixel(idxRight);
 
             // compute luminance
             currLum = 77*(colOrig>>16&0xff) + 151*(colOrig>>8&0xff) + 28*(colOrig&0xff);
@@ -10356,7 +10543,7 @@
           }
         }
       }
-      aImg.pixels.set(out);
+      aImg.pixels._set(out);
       //p.arraycopy(out,0,pixels,0,maxIdx);
     };
 
@@ -10407,22 +10594,22 @@
           if (img.format === PConstants.ALPHA) { //trouble
             // for an alpha image, convert it to an opaque grayscale
             for (i = 0; i < imglen; i++) {
-              col = 255 - img.pixels.getPixel(i);
-              img.pixels.setPixel(i,(0xff000000 | (col << 16) | (col << 8) | col));
+              col = 255 - img.pixels._getPixel(i);
+              img.pixels._setPixel(i,(0xff000000 | (col << 16) | (col << 8) | col));
             }
             img.format = PConstants.RGB; //trouble
           } else {
             for (i = 0; i < imglen; i++) {
-              col = img.pixels.getPixel(i);
+              col = img.pixels._getPixel(i);
               lum = (77*(col>>16&0xff) + 151*(col>>8&0xff) + 28*(col&0xff))>>8;
-              img.pixels.setPixel(i,((col & PConstants.ALPHA_MASK) | lum<<16 | lum<<8 | lum));
+              img.pixels._setPixel(i,(col & PConstants.ALPHA_MASK) | lum<<16 | lum<<8 | lum);
             }
           }
           break;
 
         case PConstants.INVERT:
           for (i = 0; i < imglen; i++) {
-            img.pixels.setPixel(i, (img.pixels.getPixel(i) ^ 0xffffff));
+            img.pixels._setPixel(i, (img.pixels._getPixel(i) ^ 0xffffff));
           }
           break;
 
@@ -10436,19 +10623,20 @@
           }
           var levels1 = levels - 1;
           for (i = 0; i < imglen; i++) {
-            var rlevel = (img.pixels.getPixel(i) >> 16) & 0xff;
-            var glevel = (img.pixels.getPixel(i) >> 8) & 0xff;
-            var blevel = img.pixels.getPixel(i) & 0xff;
+            var rlevel = (img.pixels._getPixel(i) >> 16) & 0xff;
+            var glevel = (img.pixels._getPixel(i) >> 8) & 0xff;
+            var blevel = img.pixels._getPixel(i) & 0xff;
             rlevel = (((rlevel * levels) >> 8) * 255) / levels1;
             glevel = (((glevel * levels) >> 8) * 255) / levels1;
             blevel = (((blevel * levels) >> 8) * 255) / levels1;
-            img.pixels.setPixel(i, ((0xff000000 & img.pixels.getPixel(i)) | (rlevel << 16) | (glevel << 8) | blevel));
+            img.pixels._setPixel(i, ((0xff000000 & img.pixels._getPixel(i)) | (rlevel << 16) | (glevel << 8) | blevel));
           }
           break;
 
         case PConstants.OPAQUE:
           for (i = 0; i < imglen; i++) {
-            img.pixels.setPixel(i, (img.pixels.getPixel(i) | 0xff000000));
+            var c = img.pixels._getPixel(i);
+            img.pixels._setPixel(i, (img.pixels._getPixel(i) | 0xff000000));
           }
           img.format = PConstants.RGB; //trouble
           break;
@@ -10462,8 +10650,8 @@
           }
           var thresh = p.floor(param * 255);
           for (i = 0; i < imglen; i++) {
-            var max = p.max((img.pixels.getPixel(i) & PConstants.RED_MASK) >> 16, p.max((img.pixels.getPixel(i) & PConstants.GREEN_MASK) >> 8, (img.pixels.getPixel(i) & PConstants.BLUE_MASK)));
-            img.pixels.setPixel(i, ((img.pixels.getPixel(i) & PConstants.ALPHA_MASK) | ((max < thresh) ? 0x000000 : 0xffffff)));
+            var max = p.max((img.pixels._getPixel(i) & PConstants.RED_MASK) >> 16, p.max((img.pixels._getPixel(i) & PConstants.GREEN_MASK) >> 8, (img.pixels._getPixel(i) & PConstants.BLUE_MASK)));
+            img.pixels._setPixel(i, ((img.pixels._getPixel(i) & PConstants.ALPHA_MASK) | ((max < thresh) ? 0x000000 : 0xffffff)));
           }
           break;
 
@@ -10645,10 +10833,10 @@
         for (x = 0; x < destW; x++) {
           idx = (destOffset + x) * 4;
 
-          destColor = (destPixels[idx + 3] << 24) &
+          destColor = color$1((destPixels[idx + 3] << 24) &
                       ALPHA_MASK | (destPixels[idx] << 16) &
                       RED_MASK   | (destPixels[idx + 1] << 8) &
-                      GREEN_MASK |  destPixels[idx + 2] & BLUE_MASK;
+                      GREEN_MASK |  destPixels[idx + 2] & BLUE_MASK);
 
           pshared.fracU = pshared.sX & PREC_MAXVAL;
           pshared.ifU = PREC_MAXVAL - pshared.fracU;
@@ -10701,12 +10889,12 @@
                        pshared.ur * ((pshared.cUR & ALPHA_MASK) >>> 24) +
                        pshared.lr * ((pshared.cLR & ALPHA_MASK) >>> 24)) << PREC_ALPHA_SHIFT) & ALPHA_MASK;
 
-          blendedColor = blendFunc(destColor, (pshared.a | pshared.r | pshared.g | pshared.b));
+          blendedColor = blendFunc(destColor, color$1(pshared.a | pshared.r | pshared.g | pshared.b));
 
-          destPixels[idx]     = (blendedColor & RED_MASK) >>> 16;
-          destPixels[idx + 1] = (blendedColor & GREEN_MASK) >>> 8;
-          destPixels[idx + 2] = (blendedColor & BLUE_MASK);
-          destPixels[idx + 3] = (blendedColor & ALPHA_MASK) >>> 24;
+          destPixels[idx]     = blendedColor._r & 255;
+          destPixels[idx + 1] = blendedColor._g & 255;
+          destPixels[idx + 2] = blendedColor._b & 255;
+          destPixels[idx + 3] = blendedColor._a & 255;
 
           pshared.sX += dx;
         }
@@ -11062,7 +11250,7 @@
       if (!curTextFont.glyph) {
         if (str && ("fillText" in curContext)) {
           if (isFillDirty) {
-            curContext.fillStyle = p.color.toString(currentFillColor);
+            curContext.fillStyle = currentFillColor.asString;
             isFillDirty = false;
           }
 

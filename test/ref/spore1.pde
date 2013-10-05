@@ -27,7 +27,7 @@ void seed()
   {
     int cX = (int)random(width);
     int cY = (int)random(height);
-    if (w.getpix(cX, cY) == black)
+    if (w.getpix(cX, cY).asInt == black.asInt)
     {
       w.setpix(cX, cY, spore_color);
       cells[numcells] = new Cell(cX, cY);
@@ -80,16 +80,16 @@ class Cell
     }
     
     // Cell instructions
-    if (w.getpix(x + 1, y) == black) {
+    if (w.getpix(x + 1, y).asInt == black.asInt) {
       move(0, 1);
-    } else if (w.getpix(x, y - 1) != black && w.getpix(x, y + 1) != black) {
+    } else if (w.getpix(x, y - 1).asInt != black.asInt && w.getpix(x, y + 1).asInt != black.asInt) {
       move((int)random(9) - 4, (int)random(9) - 4);
     }
   }
   
   // Will move the cell (dx, dy) units if that space is empty
   void move(int dx, int dy) {
-    if (w.getpix(x + dx, y + dy) == black) {
+    if (w.getpix(x + dx, y + dy).asInt == black.asInt) {
       w.setpix(x + dx, y + dy, w.getpix(x, y));
       w.setpix(x, y, color(0));
       x += dx;
